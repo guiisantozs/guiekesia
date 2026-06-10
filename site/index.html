@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gui & Késia 💕</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400;1,700&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="toast"></div>
+
+<!-- NAV -->
+<nav id="navbar">
+  <div class="nav-logo">Gui <span class="amp">&</span> Késia</div>
+  <ul class="nav-links" id="nav-links">
+    <li><a href="#hero" class="active">Início</a></li>
+    <li><a href="#player-section">Músicas</a></li>
+    <li><a href="#memories">Memórias</a></li>
+    <li><a href="#timeline">Timeline</a></li>
+    <li><a href="#letter">Carta</a></li>
+  </ul>
+  <button class="nav-hamburger" id="hamburger" onclick="toggleMenu()">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-grain"></div>
+  <div class="hero-line">
+    <svg viewBox="0 0 1200 800" fill="none">
+      <path d="M-100 400 Q300 200 600 400 Q900 600 1300 400" stroke="#c9924a" stroke-width="1.5"/>
+      <path d="M-100 500 Q300 300 600 500 Q900 700 1300 500" stroke="#d4547a" stroke-width="1"/>
+      <circle cx="600" cy="400" r="250" stroke="white" stroke-width=".5"/>
+    </svg>
+  </div>
+  <div class="hero-left">
+    <p class="hero-eyebrow">Uma história de amor</p>
+    <h1 class="hero-names">Gui<span class="amp">&</span>Késia</h1>
+    <p class="hero-tagline">Cada momento ao seu lado é um presente. Esse espaço é nosso — construído com memórias, músicas e muito amor.</p>
+    <button class="hero-cta" onclick="document.querySelector('#memories').scrollIntoView({behavior:'smooth'})">
+      Ver nossas memórias <span>→</span>
+    </button>
+    <div class="hero-counter-block">
+      <div class="counter-stat">
+        <span class="counter-num" id="cnt-days">847</span>
+        <span class="counter-lbl">Dias juntos</span>
+      </div>
+      <div class="counter-stat">
+        <span class="counter-num" id="cnt-months">27</span>
+        <span class="counter-lbl">Meses</span>
+      </div>
+      <div class="counter-stat">
+        <span class="counter-num" id="cnt-years">2.3</span>
+        <span class="counter-lbl">Anos</span>
+      </div>
+    </div>
+  </div>
+  <div class="hero-right">
+    <div class="hero-photos-stack" id="hero-photo-stack">
+  <div class="photo-card hero-slide active">
+    <div class="photo-tape"></div>
+    <img src="imagens/morioka.jpg" alt="Gui e Késia">
+  </div>
+
+  <div class="photo-card hero-slide next">
+    <div class="photo-tape"></div>
+    <img src="imagens/guipraia.jpg" alt="Gui e Késia">
+  </div>
+
+  <div class="photo-card hero-slide back-1">
+    <div class="photo-tape"></div>
+    <img src="imagens/beijo.JPG" alt="Gui e Késia">
+  </div>
+
+  <div class="photo-card hero-slide back-2">
+    <div class="photo-tape"></div>
+    <img src="imagens/RUA.jpg" alt="Gui e Késia">
+  </div>
+
+  <div class="photo-card hero-slide hidden">
+    <div class="photo-tape"></div>
+    <img src="imagens/PIZZA.jpg" alt="Gui e Késia">
+  </div>
+</div>
+</section>
+
+<!-- PLAYER -->
+<section id="player-section">
+  <p class="section-eyebrow">Trilha sonora do amor</p>
+  <h2 class="section-title">Nossas <span>músicas</span></h2>
+  <div class="player-wrap">
+    <div class="player-sidebar">
+      <div class="album-art" id="album-art">
+  <img id="album-photo" src="imagens/olivia.jpg" alt="Gui e Késia">
+</div>
+        <div class="now-name" id="now-name">Escolha uma música</div>
+        <div class="now-artist" id="now-artist">Nossa playlist</div>
+        <div class="now-tag">♡ Gui & Késia</div>
+      </div>
+    </div>
+    <div class="player-main">
+      <div class="playlist-label">Playlist do casal</div>
+      <div class="tracks-list" id="tracks-list">
+        <div class="player-loading">Carregando músicas… <span class="spin-inline">♡</span></div>
+      </div>
+      <div class="ctrl-area">
+        <div class="progress-wrap" id="prog-wrap" onclick="seekTrack(event)">
+          <div class="progress-fill" id="prog-fill"></div>
+        </div>
+        <div class="p-times"><span id="p-cur">0:00</span><span id="p-tot">0:00</span></div>
+        <div class="ctrl-row">
+          <div class="ctrl-btns">
+            <button class="cbtn" onclick="shufflePlay()" title="Aleatório">⇄</button>
+            <button class="cbtn" onclick="prevTrack()" title="Anterior">⏮</button>
+            <button class="play-btn" id="play-btn" onclick="togglePlay()">▶</button>
+            <button class="cbtn" onclick="nextTrack()" title="Próxima">⏭</button>
+            <button class="cbtn" id="repeat-btn" onclick="toggleRepeat()" title="Repetir">↻</button>
+          </div>
+          <div class="vol-row">
+            <span class="vol-icon">🔊</span>
+            <input type="range" min="0" max="1" step=".05" value=".7" class="vol-slider" oninput="setVolume(this.value)">
+          </div>
+        </div>
+      </div>
+      <div class="add-track-row">
+        <input type="text" class="ati" id="ti-name" placeholder="Nome da música…">
+        <input type="text" class="ati" id="ti-artist" placeholder="Artista…" style="max-width:150px">
+        <button class="add-track-btn" onclick="addTrack()">+ Adicionar</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MEMORIES -->
+<section id="memories">
+  <div class="mem-top">
+    <div>
+      <p class="section-eyebrow">Nossa galeria</p>
+      <h2 class="mem-title reveal">Momentos que<br><em>guardarei pra sempre</em></h2>
+    </div>
+  </div>
+  <div class="mem-tabs-wrap">
+    <div class="mem-tabs">
+      <button class="mem-tab active" data-tab="2024">2024</button>
+      <button class="mem-tab" data-tab="2025">2025</button>
+      <button class="mem-tab" data-tab="viagens">Viagens</button>
+      <button class="mem-tab" data-tab="especiais">Especiais</button>
+    </div>
+  </div>
+  <div id="panel-2024" class="mem-panel active"><div class="gallery-grid" id="grid-2024"></div></div>
+  <div id="panel-2025" class="mem-panel"><div class="gallery-grid" id="grid-2025"></div></div>
+  <div id="panel-viagens" class="mem-panel"><div class="gallery-grid" id="grid-viagens"></div></div>
+  <div id="panel-especiais" class="mem-panel"><div class="gallery-grid" id="grid-especiais"></div></div>
+</section>
+
+<!-- TIMELINE -->
+<section id="timeline">
+  <p class="section-eyebrow" style="color:var(--gold)">Nossa história</p>
+  <h2 class="tl-title reveal">Linha do tempo</h2>
+  <div class="tl-list" id="tl-list">
+    <div class="tl-empty">Carregando eventos… <span class="spin-inline">♡</span></div>
+  </div>
+</section>
+
+<!-- LETTER -->
+<section id="letter">
+  <div>
+    <p class="letter-eyebrow">Para Késia</p>
+    <h2 class="letter-title reveal">Uma carta<br>do <span>coração</span></h2>
+    <div class="letter-body reveal" id="letter-display">
+      <p>Carregando…</p>
+    </div>
+    <div class="letter-sig" id="letter-sig">Com amor, Gui ♡</div>
+  </div>
+  <div class="letter-edit-panel reveal">
+    <div class="lep-title">✏️ Editar carta</div>
+    <label class="lep-label">Seu texto</label>
+    <textarea class="lep-textarea" id="lep-text" placeholder="Escreva sua carta aqui…"></textarea>
+    <label class="lep-label" style="margin-top:14px">Assinatura</label>
+    <input type="text" class="lep-input" id="lep-sig" placeholder="Com amor, Gui ♡" value="Com amor, Gui ♡">
+    <button class="lep-btn" id="save-letter-btn" onclick="saveLetter()">Salvar carta</button>
+    <div class="lep-hint">Salvo automaticamente no Supabase.</div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-brand">Gui & Késia</div>
+  <div class="footer-heart">Feito com <span>♡</span> pra você</div>
+  <div class="footer-since" id="footer-since">Nossa história continua…</div>
+</footer>
+
+<!-- LIGHTBOX -->
+<div id="lightbox">
+  <button class="lb-close" onclick="closeLb()">×</button>
+  <button class="lb-nav lb-prev" onclick="lbNav(-1)">‹</button>
+  <img id="lb-img" src="" alt="">
+  <button class="lb-nav lb-next" onclick="lbNav(1)">›</button>
+  <div class="lb-cap" id="lb-cap"></div>
+</div>
+
+<!-- FAB -->
+<button id="fab" onclick="toggleDrawer()" title="Painel">⚙</button>
+
+<!-- DRAWER -->
+<div id="drawer">
+  <div class="drawer-head">
+    <span class="drawer-title">Painel de edição</span>
+    <button class="drawer-x" onclick="toggleDrawer()">×</button>
+  </div>
+  <div class="drawer-body">
+
+    <!-- Data -->
+    <div class="ds">
+      <div class="ds-title">Data do relacionamento</div>
+      <label class="dl">Quando começou tudo?</label>
+      <input type="date" class="di" id="d-date" onchange="saveStartDate()">
+      <div class="dhint" id="d-days-hint">Configure para ver o contador ♡</div>
+    </div>
+
+    <!-- Foto -->
+    <div class="ds">
+      <div class="ds-title">Adicionar foto</div>
+      <label class="dl">Seção</label>
+      <select class="dsel" id="d-section">
+        <option value="2024">2024</option>
+        <option value="2025">2025</option>
+        <option value="viagens">Viagens</option>
+        <option value="especiais">Especiais</option>
+      </select>
+      <label class="dl" style="margin-top:10px">Legenda</label>
+      <input type="text" class="di" id="d-caption" placeholder="Ex: Nossa primeira viagem ♡">
+      <label class="dl" style="margin-top:10px">Data (opcional)</label>
+      <input type="text" class="di" id="d-photo-date" placeholder="Ex: Dezembro 2024">
+      <input type="file" accept="image/*" id="d-file" style="display:none" onchange="previewFile(event)">
+      <button class="dbtn dbtn-outline" style="margin-top:10px" onclick="document.getElementById('d-file').click()">📁 Escolher foto</button>
+      <div class="dfile-preview" id="d-file-preview"></div>
+      <button class="dbtn dbtn-primary" style="margin-top:8px" id="add-photo-btn" onclick="addGalleryPhoto()">+ Adicionar foto</button>
+    </div>
+
+    <!-- Timeline -->
+    <div class="ds">
+      <div class="ds-title">Adicionar evento</div>
+      <label class="dl">Data</label>
+      <input type="text" class="di" id="d-tl-date" placeholder="Ex: Março 2024">
+      <label class="dl" style="margin-top:10px">Evento</label>
+      <input type="text" class="di" id="d-tl-event" placeholder="Ex: Nosso primeiro beijo ♡">
+      <label class="dl" style="margin-top:10px">Descrição</label>
+      <textarea class="dta" id="d-tl-desc" placeholder="Conte como foi…"></textarea>
+      <button class="dbtn dbtn-primary" style="margin-top:8px" id="add-tl-btn" onclick="addTimelineEvent()">+ Adicionar evento</button>
+    </div>
+
+    <div class="ds">
+      <div class="ds-title">Informações</div>
+      <div class="dhint" id="conn-status">Conectando ao Supabase…</div>
+    </div>
+
+  </div>
+</div>
+
+<audio id="audio"></audio>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="script.js"></script>
+</body>
+</html>
