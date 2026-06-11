@@ -94,53 +94,61 @@
   <p class="section-eyebrow">Trilha sonora do amor</p>
   <h2 class="section-title">Nossas <span>músicas</span></h2>
   <div class="player-wrap">
-    <div class="player-sidebar">
-      <div class="album-art" id="album-art">
-  <img id="album-photo" src="imagens/olivia.jpg" alt="Gui e Késia">
-</div>
-        <div class="now-name" id="now-name">Escolha uma música</div>
-        <div class="now-artist" id="now-artist">Nossa playlist</div>
-        <div class="now-tag">♡ Gui & Késia</div>
+  <div class="player-sidebar">
+    <div class="album-art" id="album-art">
+      <img id="album-photo" src="imagens/olivia.jpg" alt="Gui e Késia">
+    </div>
+    <div>
+      <div class="now-name" id="now-name">Escolha uma música</div>
+      <div class="now-artist" id="now-artist">Nossa playlist</div>
+      <div class="now-tag">♡ Gui & Késia</div>
+    </div>
+  </div>
+  <div class="player-main">
+    <div class="player-main-header">
+      <span class="playlist-label">Playlist do casal</span>
+      <span class="playlist-count" id="playlist-count"></span>
+    </div>
+    <div class="tracks-header">
+      <span>#</span><span>Título</span><span></span><span>Duração</span>
+    </div>
+    <div class="tracks-list" id="tracks-list">
+      <div class="player-loading">Carregando… <span class="spin-inline">♡</span></div>
+    </div>
+    <div class="player-controls">
+      <div class="progress-wrap" id="prog-wrap" onclick="seekTrack(event)">
+        <div class="progress-fill" id="prog-fill"></div>
+      </div>
+      <div class="p-times"><span id="p-cur">0:00</span><span id="p-tot">0:00</span></div>
+      <div class="ctrl-row">
+        <div class="ctrl-btns">
+          <button class="cbtn" onclick="shufflePlay()">⇄</button>
+          <button class="cbtn" onclick="prevTrack()">⏮</button>
+          <button class="play-btn" id="play-btn" onclick="togglePlay()">▶</button>
+          <button class="cbtn" onclick="nextTrack()">⏭</button>
+          <button class="cbtn" id="repeat-btn" onclick="toggleRepeat()">↻</button>
+        </div>
+        <div class="vol-row">
+          <span class="vol-icon">🔊</span>
+          <input type="range" min="0" max="1" step=".05" value=".7" class="vol-slider" oninput="setVolume(this.value)">
+        </div>
       </div>
     </div>
-    <div class="player-main">
-      <div class="playlist-label">Playlist do casal</div>
-      <div class="tracks-list" id="tracks-list">
-        <div class="player-loading">Carregando músicas… <span class="spin-inline">♡</span></div>
-      </div>
-      <div class="ctrl-area">
-        <div class="progress-wrap" id="prog-wrap" onclick="seekTrack(event)">
-          <div class="progress-fill" id="prog-fill"></div>
-        </div>
-        <div class="p-times"><span id="p-cur">0:00</span><span id="p-tot">0:00</span></div>
-        <div class="ctrl-row">
-          <div class="ctrl-btns">
-            <button class="cbtn" onclick="shufflePlay()" title="Aleatório">⇄</button>
-            <button class="cbtn" onclick="prevTrack()" title="Anterior">⏮</button>
-            <button class="play-btn" id="play-btn" onclick="togglePlay()">▶</button>
-            <button class="cbtn" onclick="nextTrack()" title="Próxima">⏭</button>
-            <button class="cbtn" id="repeat-btn" onclick="toggleRepeat()" title="Repetir">↻</button>
-          </div>
-          <div class="vol-row">
-            <span class="vol-icon">🔊</span>
-            <input type="range" min="0" max="1" step=".05" value=".7" class="vol-slider" oninput="setVolume(this.value)">
-          </div>
-        </div>
-      </div>
-     <div class="add-track-row">
-  <input type="text" id="ti-name" placeholder="Nome da música..." />
-  <input type="text" id="ti-artist" placeholder="Artista..." style="max-width:150px" />
-  <input type="file" id="ti-file" accept="audio/*" />
-  <button id="add-track-btn">+ Adicionar</button>
-</div>
-  <input 
-    type="file" 
-    class="ati" 
-    id="ti-file" 
-    accept="audio/*"
-  >
-
-  <button class="add-track-btn" onclick="addTrack()">+ Adicionar</button>
+    <div class="add-track-row">
+      <input type="text" class="ati" id="ti-name" placeholder="Nome da música…">
+      <input type="text" class="ati" id="ti-artist" placeholder="Artista…" style="max-width:130px">
+      <label class="add-mp3-label" title="Upload MP3">🎵
+        <input type="file" accept="audio/*" id="audio-file-input" style="display:none" onchange="handleAudioFile(event)">
+      </label>
+      <span class="audio-file-preview" id="audio-file-preview"></span>
+      <button class="add-track-btn" id="add-track-btn-main" onclick="addTrack()">+ Adicionar</button>
+    </div>
+     🎵
+    <input type="file" accept="audio/*,.mp3,.m4a,.ogg,.wav"
+      id="audio-file-input" style="display:none" onchange="handleAudioFile(event)">
+  </label>
+  <div id="audio-file-preview" class="audio-file-preview"></div>
+  <button class="add-track-btn" id="add-track-btn-main" onclick="addTrack()">+ Adicionar</button>
 </div>
     </div>
   </div>
@@ -274,6 +282,7 @@
 </div>
 
 <audio id="audio"></audio>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="script.js"></script>
 </body>
