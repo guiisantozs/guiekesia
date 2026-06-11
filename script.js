@@ -11,28 +11,31 @@
   const db = window.gkSupabaseClient;
 
   // ── STATE ──
-  let tracks       = [];
-  let gallery      = {};
-  let timelineData = [];
-  let currentTrack = -1;
-  let isPlaying    = false;
-  let isRepeat     = false;
-  let lbImages     = [];
-  let lbIdx        = 0;
-  let startDate    = localStorage.getItem('gk_start_date') || null;
-  let selectedFile = null;
-  let selectedAudioFile = null; // File object do MP3
+  let tracks        = [];
+  let gallery       = {};
+  let timelineData  = [];
+  let currentTrack  = -1;
+  let isPlaying     = false;
+  let isRepeat      = false;
+  let lbImages      = [];
+  let lbIdx         = 0;
+  let startDate     = localStorage.getItem('gk_start_date') || null;
+  let selectedFile  = null;
+  let selectedAudioFile = null;
   let toastT;
 
   const audioEl = () => document.getElementById('audio');
 
-  // ── INIT ──
+  // ================================================================
+  // INIT
+  // ================================================================
   document.addEventListener('DOMContentLoaded', async () => {
     setupNav();
     setupTabs();
     setupScrollReveal();
     setupHeroPhotoCarousel();
     setupAudioListeners();
+    createFloatingPlayer();
 
     if (startDate) {
       const inp = document.getElementById('d-date');
@@ -48,7 +51,74 @@
     if (status) { status.textContent = '✓ Conectado ao Supabase'; status.style.color = 'var(--rose)'; }
   });
 
-  // ── AUDIO EVENTS ──
+  // ================================================================
+  // FLOATING PLAYER — cria o elemento fixo na tela
+  // ================================================================
+  function createFloatingPlayer() {
+    const fp = document.createElement('div');
+    fp.id = 'floating-player';
+    fp.innerHTML = `
+      <div class="fp-left">
+        <div class="fp-art" id="fp-art">💕</div>
+        <div class="fp-info">
+          <div class="fp-name" id="fp-name">Carregando playlist…</div>
+          <div class="fp-artist" id="fp-artist">Nossa música</div>
+        </div>
+      </div>
+      <div class="fp-center">
+        <div class="fp-controls">
+          <button class="fp-btn" onclick="prevTrack()" title="Anterior">⏮</button>
+          <button class="fp-playbtn" id="fp-play" onclick="togglePlay()">▶</button>
+          <button class="fp-btn" onclick="nextTrack()" title="Próxima">⏭</button>
+        </div>
+        <div class="fp-progress-wrap" id="fp-prog-wrap" onclick="seekTrack(event)">
+          <div class="fp-progress-fill" id="fp-prog-fill"></div>
+        </div>
+        <div class="fp-times">
+          <span id="fp-cur">0:00</span>
+          <span id="fp-tot">0:00</span>
+        </div>
+      </div>
+      <div class="fp-right">
+        <div class="fp-vol-row">
+          <span class="fp-vol-icon">🔊</span>
+          <input type="range" min="0" max="1" step=".05" value=".7"
+            class="fp-vol-slider" id="fp-vol" oninput="setVolume(this.value)">
+        </div>
+        <button class="fp-btn fp-shuffle" onclick="shufflePlay()" title="Aleatório">⇄</button>
+        <button class="fp-btn fp-repeat" id="fp-repeat" onclick="toggleRepeat()" title="Repetir">↻</button>
+      </div>
+    `;
+    document.body.appendChild(fp);
+  }
+
+  function syncFloatingPlayer() {
+    const t = currentTrack >= 0 ? tracks[currentTrack] : null;
+    const name   = document.getElementById('fp-name');
+    const artist = document.getElementById('fp-artist');
+    const art    = document.getElementById('fp-art');
+    const btn    = document.getElementById('fp-play');
+    if (name)   name.textContent   = t ? t.name   : 'Nossa playlist';
+    if (artist) artist.textContent = t ? (t.artist || '') : '';
+    if (art)    art.textContent    = t ? (t.emoji || '💕') : '💕';
+    if (btn)    btn.textContent    = isPlaying ? '⏸' : '▶';
+  }
+
+  function syncFloatingProgress() {
+    const a = audioEl();
+    if (!a || !a.duration) return;
+    const pct = (a.currentTime / a.duration) * 100;
+    const fill = document.getElementById('fp-prog-fill');
+    if (fill) fill.style.width = pct + '%';
+    const cur = document.getElementById('fp-cur');
+    const tot = document.getElementById('fp-tot');
+    if (cur) cur.textContent = fmtTime(a.currentTime);
+    if (tot) tot.textContent = fmtTime(a.duration);
+  }
+
+  // ================================================================
+  // AUDIO LISTENERS
+  // ================================================================
   function setupAudioListeners() {
     const a = audioEl();
     if (!a) return;
@@ -56,12 +126,15 @@
     a.addEventListener('timeupdate', () => {
       if (!a.duration) return;
       const pct = (a.currentTime / a.duration) * 100;
+      // barra do player principal
       const fill = document.getElementById('prog-fill');
       if (fill) fill.style.width = pct + '%';
       const pCur = document.getElementById('p-cur');
       const pTot = document.getElementById('p-tot');
       if (pCur) pCur.textContent = fmtTime(a.currentTime);
       if (pTot) pTot.textContent = fmtTime(a.duration);
+      // barra do flutuante
+      syncFloatingProgress();
     });
 
     a.addEventListener('ended', () => {
@@ -69,13 +142,9 @@
       else nextTrack();
     });
 
-    a.addEventListener('play',  () => syncPlayBtn(true));
-    a.addEventListener('pause', () => syncPlayBtn(false));
-
-    a.addEventListener('error', () => {
-      showToast('Erro ao reproduzir o áudio');
-      syncPlayBtn(false);
-    });
+    a.addEventListener('play',  () => { syncPlayBtn(true);  syncFloatingPlayer(); });
+    a.addEventListener('pause', () => { syncPlayBtn(false); syncFloatingPlayer(); });
+    a.addEventListener('error', () => { showToast('Erro ao reproduzir'); syncPlayBtn(false); });
   }
 
   function fmtTime(sec) {
@@ -85,13 +154,17 @@
 
   function syncPlayBtn(playing) {
     isPlaying = playing;
-    const btn = document.getElementById('play-btn');
-    const art = document.getElementById('album-art');
+    const btn  = document.getElementById('play-btn');
+    const fpb  = document.getElementById('fp-play');
+    const art  = document.getElementById('album-art');
     if (btn) btn.textContent = playing ? '⏸' : '▶';
+    if (fpb) fpb.textContent = playing ? '⏸' : '▶';
     if (art) art.classList.toggle('playing', playing);
   }
 
-  // ── COUNTER ──
+  // ================================================================
+  // COUNTER
+  // ================================================================
   function saveStartDate() {
     const v = document.getElementById('d-date')?.value;
     if (!v) return;
@@ -117,26 +190,75 @@
   }
 
   // ================================================================
-  // TRACKS — usa Supabase Storage para o MP3
+  // TRACKS — autoplay na primeira música
   // ================================================================
   async function loadTracks() {
-    const { data, error } = await db.from('tracks').select('*').order('name');
+    const { data, error } = await db.from('tracks').select('*');
     if (error) { showToast('Erro ao carregar músicas'); return; }
     tracks = data || [];
     renderTracks();
+    syncFloatingPlayer();
+
+    // Mostra o player flutuante assim que as músicas carregam
+    if (tracks.length > 0) {
+      document.getElementById('floating-player')?.classList.add('active');
+      tryAutoplay();
+    }
+  }
+
+  function tryAutoplay() {
+    selectTrackSilent(0); // carrega o áudio
+    const a = audioEl();
+    if (!a) return;
+    const playPromise = a.play();
+    if (playPromise !== undefined) {
+      playPromise.catch(() => {
+        // Autoplay bloqueado — toca no primeiro clique do usuário
+        const unlock = () => {
+          a.play().then(() => {
+            document.removeEventListener('click', unlock);
+            document.removeEventListener('touchstart', unlock);
+          }).catch(() => {});
+        };
+        document.addEventListener('click', unlock, { once: true });
+        document.addEventListener('touchstart', unlock, { once: true });
+        // Mostra dica discreta
+        showToast('Clique em qualquer lugar para iniciar a música ♡');
+      });
+    }
+  }
+
+  // Carrega a faixa sem forçar play (para o autoplay)
+  function selectTrackSilent(i) {
+    if (!tracks[i]) return;
+    currentTrack = i;
+    const t = tracks[i];
+    const nn = document.getElementById('now-name');
+    const na = document.getElementById('now-artist');
+    if (nn) nn.textContent = t.name || 'Música';
+    if (na) na.textContent = t.artist || '';
+    renderTracks();
+    syncFloatingPlayer();
+
+    if (t.audio_path) {
+      const { data } = db.storage.from('tracks-audio').getPublicUrl(t.audio_path);
+      const a = audioEl();
+      if (a) { a.src = data.publicUrl; a.load(); }
+    }
   }
 
   function renderTracks() {
     const c = document.getElementById('tracks-list');
     if (!c) return;
     c.innerHTML = '';
+
+    const countEl = document.getElementById('playlist-count');
+    if (countEl) countEl.textContent = tracks.length + (tracks.length === 1 ? ' música' : ' músicas');
+
     if (!tracks.length) {
       c.innerHTML = '<div class="player-loading">Nenhuma música ainda. Adicione abaixo! ♡</div>';
       return;
     }
-    // Atualiza contagem
-    const countEl = document.getElementById('playlist-count');
-    if (countEl) countEl.textContent = tracks.length + (tracks.length === 1 ? ' música' : ' músicas');
 
     tracks.forEach((t, i) => {
       const div = document.createElement('div');
@@ -164,25 +286,21 @@
     if (!tracks[i]) return;
     currentTrack = i;
     const t = tracks[i];
-
     const nn = document.getElementById('now-name');
     const na = document.getElementById('now-artist');
     if (nn) nn.textContent = t.name || 'Música';
     if (na) na.textContent = t.artist || '';
-
     renderTracks();
+    syncFloatingPlayer();
 
     const a = audioEl();
     if (!a) return;
-
     if (t.audio_path) {
-      // Gera URL pública do arquivo no Storage
       const { data } = db.storage.from('tracks-audio').getPublicUrl(t.audio_path);
       a.src = data.publicUrl;
       a.load();
       a.play().catch(err => console.warn('Autoplay bloqueado:', err));
     } else {
-      // Sem arquivo — só animação visual
       a.src = '';
       syncPlayBtn(true);
     }
@@ -220,43 +338,44 @@
   function toggleRepeat() {
     isRepeat = !isRepeat;
     document.getElementById('repeat-btn')?.classList.toggle('active', isRepeat);
+    document.getElementById('fp-repeat')?.classList.toggle('active', isRepeat);
   }
 
   function setVolume(v) {
     const a = audioEl();
     if (a) a.volume = parseFloat(v);
+    // Sincroniza os dois sliders
+    const fpVol = document.getElementById('fp-vol');
+    const mainVol = document.querySelector('.vol-slider');
+    if (fpVol && fpVol !== event?.target)   fpVol.value = v;
+    if (mainVol && mainVol !== event?.target) mainVol.value = v;
   }
 
   function seekTrack(e) {
     const a = audioEl();
     const r = e.currentTarget.getBoundingClientRect();
     const pct = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width));
-    if (a && a.duration) {
-      a.currentTime = pct * a.duration;
-    } else {
+    if (a && a.duration) a.currentTime = pct * a.duration;
+    else {
       const fill = document.getElementById('prog-fill');
       if (fill) fill.style.width = (pct * 100) + '%';
     }
   }
 
-  // ── SELECIONAR MP3 ──
+  // ── UPLOAD MP3 ──
   function handleAudioFile(e) {
     const file = e.target.files[0];
     if (!file) return;
     if (!file.type.startsWith('audio/')) { showToast('Selecione um arquivo de áudio válido'); return; }
-
     selectedAudioFile = file;
     const preview = document.getElementById('audio-file-preview');
     if (preview) preview.textContent = '✓ ' + file.name;
-
-    // Auto-preenche nome se vazio
     const nameInp = document.getElementById('ti-name');
     if (nameInp && !nameInp.value) {
       nameInp.value = file.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
     }
   }
 
-  // ── ADICIONAR MÚSICA ──
   async function addTrack() {
     const name   = document.getElementById('ti-name')?.value.trim()   || '';
     const artist = document.getElementById('ti-artist')?.value.trim() || '';
@@ -267,53 +386,39 @@
 
     const emojis = ['💕','❤️','🌹','✨','🎵','💖','🎶','🌸'];
     const emoji  = emojis[Math.floor(Math.random() * emojis.length)];
-
     let audio_path = null;
     let dur = '—';
 
-    // 1. Faz upload do MP3 pro Storage (se tiver arquivo)
     if (selectedAudioFile) {
       const ext      = selectedAudioFile.name.split('.').pop();
       const filename = `${Date.now()}_${name.replace(/\s+/g,'_')}.${ext}`;
-
       const { data: uploadData, error: uploadErr } = await db.storage
         .from('tracks-audio')
-        .upload(filename, selectedAudioFile, {
-          contentType: selectedAudioFile.type,
-          upsert: false
-        });
+        .upload(filename, selectedAudioFile, { contentType: selectedAudioFile.type, upsert: false });
 
       if (uploadErr) {
         if (btn) { btn.disabled = false; btn.textContent = '+ Adicionar'; }
         showToast('Erro no upload: ' + uploadErr.message);
         return;
       }
-
       audio_path = uploadData.path;
 
-      // Pega duração real
       dur = await new Promise(resolve => {
-        const tmpAudio = new Audio();
+        const tmp = new Audio();
         const url = URL.createObjectURL(selectedAudioFile);
-        tmpAudio.src = url;
-        tmpAudio.addEventListener('loadedmetadata', () => {
-          resolve(fmtTime(tmpAudio.duration));
-          URL.revokeObjectURL(url);
-        });
-        tmpAudio.addEventListener('error', () => resolve('—'));
+        tmp.src = url;
+        tmp.addEventListener('loadedmetadata', () => { resolve(fmtTime(tmp.duration)); URL.revokeObjectURL(url); });
+        tmp.addEventListener('error', () => resolve('—'));
       });
     }
 
-    // 2. Salva metadados no banco (sem o arquivo, só o path)
     const { data, error } = await db.from('tracks')
       .insert([{ name, artist: artist || 'Artista', dur, emoji, audio_path }])
       .select();
 
     if (btn) { btn.disabled = false; btn.textContent = '+ Adicionar'; }
-
     if (error) {
       showToast('Erro ao salvar: ' + error.message);
-      // Se falhou, remove o arquivo do storage
       if (audio_path) await db.storage.from('tracks-audio').remove([audio_path]);
       return;
     }
@@ -335,34 +440,27 @@
 
   async function removeTrack(id, audioPath) {
     if (!confirm('Remover esta música?')) return;
-
-    // Remove arquivo do Storage se existir
-    if (audioPath) {
-      await db.storage.from('tracks-audio').remove([audioPath]);
-    }
-
+    if (audioPath) await db.storage.from('tracks-audio').remove([audioPath]);
     const { error } = await db.from('tracks').delete().eq('id', id);
     if (error) { showToast('Erro ao remover'); return; }
-
     const idx = tracks.findIndex(t => t.id === id);
     if (currentTrack === idx) {
       const a = audioEl();
       if (a) { a.pause(); a.src = ''; }
       syncPlayBtn(false);
       currentTrack = -1;
-    } else if (currentTrack > idx) {
-      currentTrack--;
-    }
+    } else if (currentTrack > idx) currentTrack--;
     tracks = tracks.filter(t => t.id !== id);
     renderTracks();
+    syncFloatingPlayer();
   }
 
   // ================================================================
   // GALLERY
   // ================================================================
   async function loadGallery() {
-    const { data, error } = await db.from('gallery').select('*').order('id');
-    if (error) { showToast('Erro ao carregar galeria'); return; }
+    const { data, error } = await db.from('gallery').select('*');
+    if (error) { showToast('Erro ao carregar galeria'); console.error('Gallery error:', error); return; }
     gallery = {};
     (data || []).forEach(p => {
       if (!gallery[p.section]) gallery[p.section] = [];
@@ -379,7 +477,6 @@
     const grid = document.getElementById('grid-' + sec);
     if (!grid) return;
     grid.innerHTML = '';
-
     const btn = document.createElement('button');
     btn.className = 'add-photo-card';
     btn.innerHTML = '<span>+</span><span>Adicionar foto</span>';
@@ -390,7 +487,6 @@
       if (drawer) drawer.classList.add('open');
     };
     grid.appendChild(btn);
-
     (gallery[sec] || []).forEach((p, i) => {
       const el = document.createElement('div');
       el.className = 'gal-item';
@@ -403,10 +499,7 @@
         <button class="gal-del" data-id="${p.id}" data-sec="${sec}">×</button>
       `;
       el.querySelector('img').onclick = () => openLb(sec, i);
-      el.querySelector('.gal-del').onclick = e => {
-        e.stopPropagation();
-        removeGalleryPhoto(p.id, sec);
-      };
+      el.querySelector('.gal-del').onclick = e => { e.stopPropagation(); removeGalleryPhoto(p.id, sec); };
       grid.insertBefore(el, btn);
     });
   }
@@ -427,21 +520,14 @@
     if (!selectedFile) { showToast('Selecione uma foto primeiro'); return; }
     const btn = document.getElementById('add-photo-btn');
     if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spin-inline">♡</span> Salvando…'; }
-
     const sec     = document.getElementById('d-section')?.value || '2024';
     const caption = document.getElementById('d-caption')?.value || 'Nosso momento especial';
     const date    = document.getElementById('d-photo-date')?.value || '';
-
-    const { data, error } = await db.from('gallery')
-      .insert([{ src: selectedFile, caption, date, section: sec }])
-      .select();
-
+    const { data, error } = await db.from('gallery').insert([{ src: selectedFile, caption, date, section: sec }]).select();
     if (btn) { btn.disabled = false; btn.innerHTML = '+ Adicionar foto'; }
     if (error) { showToast('Erro: ' + error.message); return; }
-
     if (!gallery[sec]) gallery[sec] = [];
     gallery[sec].push(data[0]);
-
     selectedFile = null;
     ['d-file','d-caption','d-photo-date'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
     const pv = document.getElementById('d-file-preview');
@@ -458,7 +544,7 @@
     renderGallery(sec);
   }
 
-  // ── LIGHTBOX ──
+  // LIGHTBOX
   function openLb(sec, idx) {
     lbImages = gallery[sec] || [];
     lbIdx = idx;
@@ -488,24 +574,63 @@
   document.getElementById('lightbox')?.addEventListener('click', function(e) { if (e.target === this) closeLb(); });
 
   // ================================================================
-  // TIMELINE
+  // TIMELINE — ordenada por data cronologicamente
   // ================================================================
   async function loadTimeline() {
-    const { data, error } = await db.from('timeline').select('*').order('id');
+    const { data, error } = await db.from('timeline').select('*');
     if (error) { showToast('Erro ao carregar timeline'); return; }
     timelineData = data || [];
-    renderTimeline();
+    sortAndRenderTimeline();
   }
 
-  function renderTimeline() {
+  // Converte texto de data para valor numérico para ordenação
+  function parseDateValue(dateStr) {
+    if (!dateStr) return 0;
+
+    // Tenta parsear como data completa (ex: 2024-03-15)
+    const iso = new Date(dateStr);
+    if (!isNaN(iso.getTime())) return iso.getTime();
+
+    // Tenta parsear formato "Março 2024", "março de 2024", etc.
+    const meses = {
+      janeiro:1, fevereiro:2, março:3, abril:4, maio:5, junho:6,
+      julho:7, agosto:8, setembro:9, outubro:10, novembro:11, dezembro:12,
+      jan:1, fev:2, mar:3, abr:4, mai:5, jun:6,
+      jul:7, ago:8, set:9, out:10, nov:11, dez:12
+    };
+
+    const lower = dateStr.toLowerCase().replace(' de ', ' ');
+    const parts  = lower.split(/[\s,\/\-]+/);
+
+    let month = 0, year = 0;
+    parts.forEach(p => {
+      if (meses[p]) month = meses[p];
+      if (/^\d{4}$/.test(p)) year = parseInt(p);
+    });
+
+    if (year > 0) return new Date(year, month - 1 || 0, 1).getTime();
+
+    // Só o ano
+    if (/^\d{4}$/.test(dateStr.trim())) return new Date(parseInt(dateStr), 0, 1).getTime();
+
+    return 0; // não conseguiu parsear — vai pro final
+  }
+
+  function sortAndRenderTimeline() {
+    // Ordena do mais antigo para o mais novo
+    const sorted = [...timelineData].sort((a, b) => parseDateValue(a.date) - parseDateValue(b.date));
+    renderTimeline(sorted);
+  }
+
+  function renderTimeline(data) {
     const list = document.getElementById('tl-list');
     if (!list) return;
     list.innerHTML = '';
-    if (!timelineData.length) {
+    if (!data.length) {
       list.innerHTML = '<div class="tl-empty">Nenhum evento ainda. Adicione no painel ♡</div>';
       return;
     }
-    timelineData.forEach((item, i) => {
+    data.forEach((item, i) => {
       const div = document.createElement('div');
       div.className = 'tl-item';
       div.innerHTML = `
@@ -519,7 +644,7 @@
       `;
       div.querySelector('.tl-del-btn').onclick = () => removeTlItem(item.id);
       list.appendChild(div);
-      setTimeout(() => div.classList.add('visible'), 80 * i);
+      setTimeout(() => div.classList.add('visible'), 100 * i);
     });
   }
 
@@ -531,14 +656,13 @@
 
     const btn = document.getElementById('add-tl-btn');
     if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spin-inline">♡</span> Salvando…'; }
-
     const { data, error } = await db.from('timeline').insert([{ date, event, desc }]).select();
     if (btn) { btn.disabled = false; btn.innerHTML = '+ Adicionar evento'; }
     if (error) { showToast('Erro: ' + error.message); return; }
 
-    timelineData.unshift(data[0]);
+    timelineData.push(data[0]);
     ['d-tl-date','d-tl-event','d-tl-desc'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-    renderTimeline();
+    sortAndRenderTimeline(); // re-ordena ao adicionar
     showToast('Evento adicionado ♡');
   }
 
@@ -547,7 +671,7 @@
     const { error } = await db.from('timeline').delete().eq('id', id);
     if (error) { showToast('Erro ao remover'); return; }
     timelineData = timelineData.filter(t => t.id !== id);
-    renderTimeline();
+    sortAndRenderTimeline();
   }
 
   // ================================================================
@@ -581,7 +705,9 @@
     showToast('Carta salva com amor ♡');
   }
 
-  // ── UI ──
+  // ================================================================
+  // UI UTILS
+  // ================================================================
   function toggleDrawer() { document.getElementById('drawer')?.classList.toggle('open'); }
   function toggleMenu()   { document.getElementById('nav-links')?.classList.toggle('open'); }
 
@@ -630,7 +756,7 @@
   }
 
   document.addEventListener('click', e => {
-    if (e.target.closest('button,a,input,select,textarea,#lightbox,#drawer')) return;
+    if (e.target.closest('button,a,input,select,textarea,#lightbox,#drawer,#floating-player')) return;
     const s = document.createElement('span');
     s.className = 'sparkle';
     s.textContent = ['💕','✨','❤️','🌸','💖'][Math.floor(Math.random() * 5)];

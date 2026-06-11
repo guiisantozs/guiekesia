@@ -377,5 +377,111 @@ footer{background:var(--ink);padding:44px 80px;display:flex;align-items:center;j
   .counter-stat{border-right:none;border-bottom:1px solid rgba(255,255,255,.07);padding:14px 0 !important;}
   .counter-stat:last-child{border-bottom:none;}
 }
-EOF
-echo "Done: $(wc -l < /mnt/user-data/outputs/style.css) linhas"
+
+/* ===== FLOATING PLAYER ===== */
+#floating-player{
+  position:fixed;bottom:0;left:0;right:0;z-index:500;
+  background:rgba(18,12,16,.96);backdrop-filter:blur(20px);
+  border-top:1px solid rgba(212,84,122,.2);
+  display:grid;grid-template-columns:280px 1fr 200px;
+  align-items:center;gap:0;
+  height:72px;padding:0 24px;
+  transform:translateY(100%);
+  transition:transform .5s cubic-bezier(.23,1,.32,1);
+}
+#floating-player.active{transform:translateY(0);}/* aparece quando músicas carregam */
+
+/* Left: art + info */
+.fp-left{display:flex;align-items:center;gap:12px;min-width:0;}
+.fp-art{
+  width:44px;height:44px;border-radius:4px;flex-shrink:0;
+  background:linear-gradient(135deg,var(--plum),var(--rose));
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.3rem;
+}
+.fp-info{min-width:0;}
+.fp-name{font-size:.85rem;font-weight:600;color:var(--white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.fp-artist{font-size:.72rem;color:rgba(255,255,255,.4);margin-top:1px;}
+
+/* Center: controls + progress */
+.fp-center{display:flex;flex-direction:column;align-items:center;gap:6px;padding:0 24px;}
+.fp-controls{display:flex;align-items:center;gap:16px;}
+.fp-btn{
+  background:none;border:none;color:rgba(255,255,255,.45);
+  cursor:pointer;font-size:1rem;transition:color .2s;padding:4px;
+}
+.fp-btn:hover{color:var(--white);}
+.fp-btn.active{color:var(--rose);}
+.fp-play{
+  width:36px;height:36px;border-radius:50%;
+  background:var(--white);color:var(--ink);
+  font-size:.85rem;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;border:none;transition:all .2s;
+}
+.fp-play:hover{transform:scale(1.08);background:var(--blush);}
+
+.fp-progress-wrap{
+  width:100%;max-width:400px;height:3px;
+  background:rgba(255,255,255,.15);border-radius:2px;cursor:pointer;
+}
+.fp-progress-fill{
+  height:100%;background:var(--white);border-radius:2px;width:0%;
+  transition:width .3s linear;pointer-events:none;
+}
+.fp-progress-wrap:hover .fp-progress-fill{background:var(--rose);}
+.fp-times{display:flex;gap:8px;font-size:.65rem;color:rgba(255,255,255,.3);}
+
+/* Right: volume */
+.fp-right{display:flex;align-items:center;justify-content:flex-end;gap:10px;}
+.fp-vol-icon{font-size:.8rem;color:rgba(255,255,255,.35);}
+.fp-vol{
+  width:80px;height:3px;appearance:none;
+  background:rgba(255,255,255,.2);border-radius:2px;
+  cursor:pointer;outline:none;
+}
+.fp-vol::-webkit-slider-thumb{
+  appearance:none;width:11px;height:11px;
+  border-radius:50%;background:var(--white);cursor:pointer;
+}
+.fp-repeat{font-size:1rem;}
+
+/* Garante que o conteúdo não fique atrás do player */
+body{padding-bottom:72px;}
+
+/* ===== AUTOPLAY BANNER ===== */
+#autoplay-banner{
+  position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);
+  z-index:501;
+  background:rgba(18,12,16,.95);backdrop-filter:blur(16px);
+  border:1px solid rgba(212,84,122,.3);
+  padding:12px 20px;border-radius:40px;
+  display:flex;align-items:center;gap:12px;
+  font-size:.82rem;color:rgba(255,255,255,.7);
+  opacity:0;pointer-events:none;
+  transition:all .4s cubic-bezier(.23,1,.32,1);
+  white-space:nowrap;
+}
+#autoplay-banner.show{
+  opacity:1;pointer-events:all;
+  transform:translateX(-50%) translateY(0);
+}
+#autoplay-banner button{
+  padding:6px 16px;background:var(--rose);border:none;
+  color:var(--white);border-radius:20px;cursor:pointer;
+  font-size:.78rem;font-family:var(--f-body);font-weight:500;
+  transition:background .2s;
+}
+#autoplay-banner button:hover{background:#bc3d62;}
+
+/* Mobile adjustments */
+@media(max-width:768px){
+  #floating-player{
+    grid-template-columns:1fr;
+    height:auto;padding:10px 16px 14px;
+    gap:8px;
+  }
+  .fp-left{display:none;}
+  .fp-right{display:none;}
+  .fp-center{width:100%;padding:0;}
+  body{padding-bottom:90px;}
+}
