@@ -269,6 +269,7 @@ if (audio && audio.src) {
   } else {
     clearInterval(progInterval);
   }
+  }
 }
 
   function nextTrack() {
@@ -310,7 +311,6 @@ if (audio && audio.src) {
 
   updateProgUI();
 }
-  }
 
   function startProgressSim() {
     clearInterval(progInterval);
@@ -350,9 +350,35 @@ if (audio && audio.src) {
   const artistInput = document.getElementById('ti-artist');
   const fileInput = document.getElementById('ti-file');
 
-  const name = nameInput?.value.trim() || '';
-  const artist = artistInput?.value.trim() || '';
+  const name = nameInput?.value.trim();
+  const artist = artistInput?.value.trim();
   const file = fileInput?.files?.[0];
+
+  if (!name) return alert('Digite o nome da música');
+  if (!file) return alert('Escolha o arquivo de música');
+
+  const safeFileName = `${Date.now()}-${file.name}`;
+  const { error: uploadError } = await db.storage
+    .from('musicas')
+    .upload(`tracks/${safeFileName}`, file, { upsert: true });
+
+  if (uploadError) return alert('Erro ao enviar: ' + uploadError.message);
+
+  const { data: publicUrlData } = db.storage
+    .from('musicas')
+    .getPublicUrl(`tracks/${safeFileName}`);
+
+  const musicUrl = publicUrlData.publicUrl;
+
+  await db.from('tracks').insert([{ name, artist, src: musicUrl, file_path: `tracks/${safeFileName}` }]);
+
+  nameInput.value = '';
+  artistInput.value = '';
+  fileInput.value = '';
+
+  renderTracks();
+  alert('Música adicionada e pronta para tocar!');
+}
 
   if (!name) {
     showToast('Digite o nome da música');
@@ -431,7 +457,7 @@ if (audio && audio.src) {
 
   renderTracks();
   showToast('Música adicionada ♡');
-}
+
 
   async function removeTrack(id, e) {
     if (e) e.stopPropagation();
@@ -1001,5 +1027,6 @@ function setupHeroPhotoCarousel() {
     updateSlides();
   }, 3500);
 }
+document.getElementById('add-track-btn')?.addEventListener('click', addTrack);
 
 })();
