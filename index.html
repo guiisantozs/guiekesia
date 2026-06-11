@@ -128,10 +128,18 @@
         </div>
       </div>
       <div class="add-track-row">
-        <input type="text" class="ati" id="ti-name" placeholder="Nome da música…">
-        <input type="text" class="ati" id="ti-artist" placeholder="Artista…" style="max-width:150px">
-        <button class="add-track-btn" onclick="addTrack()">+ Adicionar</button>
-      </div>
+  <input type="text" class="ati" id="ti-name" placeholder="Nome da música…">
+  <input type="text" class="ati" id="ti-artist" placeholder="Artista…" style="max-width:150px">
+
+  <input 
+    type="file" 
+    class="ati" 
+    id="ti-file" 
+    accept="audio/*"
+  >
+
+  <button class="add-track-btn" onclick="addTrack()">+ Adicionar</button>
+</div>
     </div>
   </div>
 </section>
@@ -264,7 +272,6 @@
 </div>
 
 <audio id="audio"></audio>
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="script.js"></script>
 </body>

@@ -200,9 +200,45 @@
     isPlaying = true;
     if (playBtn) playBtn.textContent = '⏸';
 
-    progress = 0;
-    startProgressSim();
-    renderTracks();
+   progress = 0;
+
+const audio = document.getElementById('audio');
+
+if (audio && t.src) {
+  audio.src = t.src;
+  audio.play().catch(err => {
+    console.warn('O navegador bloqueou o autoplay:', err);
+  });
+
+  audio.ontimeupdate = () => {
+    if (!audio.duration) return;
+
+    progress = (audio.currentTime / audio.duration) * 100;
+    updateProgUI();
+  };
+
+  audio.onloadedmetadata = () => {
+    const total = Math.floor(audio.duration);
+    const min = Math.floor(total / 60);
+    const sec = String(total % 60).padStart(2, '0');
+
+    const pTot = document.getElementById('p-tot');
+    if (pTot) pTot.textContent = `${min}:${sec}`;
+  };
+
+  audio.onended = () => {
+    if (isRepeat) {
+      audio.currentTime = 0;
+      audio.play();
+    } else {
+      nextTrack();
+    }
+  };
+} else {
+  startProgressSim();
+}
+
+renderTracks();
   }
 
   function togglePlay() {
@@ -219,12 +255,21 @@
     if (playBtn) playBtn.textContent = isPlaying ? '⏸' : '▶';
     if (albumArt) albumArt.classList.toggle('playing', isPlaying);
 
-    if (isPlaying) {
-      startProgressSim();
-    } else {
-      clearInterval(progInterval);
-    }
+    const audio = document.getElementById('audio');
+
+if (audio && audio.src) {
+  if (isPlaying) {
+    audio.play();
+  } else {
+    audio.pause();
   }
+} else {
+  if (isPlaying) {
+    startProgressSim();
+  } else {
+    clearInterval(progInterval);
+  }
+}
 
   function nextTrack() {
     if (!tracks.length) return;
@@ -254,9 +299,17 @@
   }
 
   function seekTrack(e) {
-    const r = e.currentTarget.getBoundingClientRect();
-    progress = Math.min(100, Math.max(0, ((e.clientX - r.left) / r.width) * 100));
-    updateProgUI();
+  const r = e.currentTarget.getBoundingClientRect();
+  progress = Math.min(100, Math.max(0, ((e.clientX - r.left) / r.width) * 100));
+
+  const audio = document.getElementById('audio');
+
+  if (audio && audio.duration) {
+    audio.currentTime = (progress / 100) * audio.duration;
+  }
+
+  updateProgUI();
+}
   }
 
   function startProgressSim() {
@@ -293,39 +346,92 @@
   }
 
   async function addTrack() {
-    const nameInput = document.getElementById('ti-name');
-    const artistInput = document.getElementById('ti-artist');
+  const nameInput = document.getElementById('ti-name');
+  const artistInput = document.getElementById('ti-artist');
+  const fileInput = document.getElementById('ti-file');
 
-    const name = nameInput?.value.trim() || '';
-    const artist = artistInput?.value.trim() || '';
+  const name = nameInput?.value.trim() || '';
+  const artist = artistInput?.value.trim() || '';
+  const file = fileInput?.files?.[0];
 
-    if (!name) {
-      showToast('Digite o nome da música');
-      return;
-    }
-
-    const emojis = ['💕', '❤️', '🌹', '✨', '🎵', '💖', '🎶', '🌸'];
-    const emoji = emojis[Math.floor(Math.random() * emojis.length)];
-
-    const { data, error } = await db
-      .from('tracks')
-      .insert([{ name, artist: artist || 'Artista', dur: '—', emoji }])
-      .select();
-
-    if (error) {
-      showToast('Erro ao salvar: ' + error.message);
-      console.error(error);
-      return;
-    }
-
-    tracks.push(data[0]);
-
-    if (nameInput) nameInput.value = '';
-    if (artistInput) artistInput.value = '';
-
-    renderTracks();
-    showToast('Música adicionada ♡');
+  if (!name) {
+    showToast('Digite o nome da música');
+    return;
   }
+
+  if (!file) {
+    showToast('Escolha o arquivo da música');
+    return;
+  }
+
+  const allowedTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/mp4'];
+
+  if (!allowedTypes.includes(file.type)) {
+    showToast('Use um arquivo de áudio válido');
+    return;
+  }
+
+  const emojis = ['💕', '❤️', '🌹', '✨', '🎵', '💖', '🎶', '🌸'];
+  const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+
+  const safeFileName = file.name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9.\-_]/g, '-')
+    .toLowerCase();
+
+  const filePath = `tracks/${Date.now()}-${safeFileName}`;
+
+  showToast('Enviando música…');
+
+  const { error: uploadError } = await db.storage
+    .from('musicas')
+    .upload(filePath, file, {
+      cacheControl: '3600',
+      upsert: false
+    });
+
+  if (uploadError) {
+    showToast('Erro ao enviar arquivo: ' + uploadError.message);
+    console.error(uploadError);
+    return;
+  }
+
+  const { data: publicUrlData } = db.storage
+    .from('musicas')
+    .getPublicUrl(filePath);
+
+  const musicUrl = publicUrlData.publicUrl;
+
+  const { data, error } = await db
+    .from('tracks')
+    .insert([
+      {
+        name,
+        artist: artist || 'Artista',
+        dur: '—',
+        emoji,
+        src: musicUrl,
+        file_path: filePath
+      }
+    ])
+    .select();
+
+  if (error) {
+    showToast('Erro ao salvar música: ' + error.message);
+    console.error(error);
+    return;
+  }
+
+  tracks.push(data[0]);
+
+  if (nameInput) nameInput.value = '';
+  if (artistInput) artistInput.value = '';
+  if (fileInput) fileInput.value = '';
+
+  renderTracks();
+  showToast('Música adicionada ♡');
+}
 
   async function removeTrack(id, e) {
     if (e) e.stopPropagation();
